@@ -16,14 +16,6 @@ import ora from "ora";
 
 dotenv.config();
 
-// Get all files from a directory
-// individually go through each file
-// build the car
-// check if pinned if pinned return
-// if cids do not match then retry (Max 3 retries) --> if all fail save in the dead file
-// check if file is pinned with storage.status
-
-// ~/Dropbox/public
 async function main() {
   if (!process.env.API_KEY) {
     throw new Error("missing nft.storage API key");
@@ -33,18 +25,12 @@ async function main() {
   if (!directoryPath) {
     throw new Error("missing directory argument");
   }
-  console.log(directoryPath);
   const files = await fs.promises.readdir(directoryPath);
-  console.log(files);
-
-  // Add dead file mode
 
   const spinner = ora();
   const endpoint = process.env.ENDPOINT || "https://api.nft.storage";
   const storage = new NFTStorage({ token: process.env.API_KEY, endpoint });
-  // loop through files get
-  // get file path
-  // Max processed at once 1000
+
   let promises = [];
   for (const file of files) {
     promises.push(work(spinner, `${directoryPath}/${file}`, storage, endpoint));
@@ -74,7 +60,6 @@ async function work(spinner, filePath, storage, endpoint, retries = 3) {
   spinner.stopAndPersist({ text: `CID: ${root}`, symbol: "🆔" });
   // Check if cid is already pinned
   const status = await storage.status(root).catch((err) => null);
-  console.log(`Status ${JSON.stringify(status)}`);
   // This means the cid is in the pin queue
   if (status) {
     return;
@@ -108,13 +93,11 @@ async function work(spinner, filePath, storage, endpoint, retries = 3) {
     });
 
     spinner.info(`CID in response (for verification): ${cid}`);
-    console.log(root);
-    console.log(cid.toString());
-    console.log(cid === root.toString());
     if (root !== cid.toString()) {
       console.log(`cids do not match ${root} and ${cid}`);
       if (retries !== 0) {
         await work(spinner, filePath, storage, retries - 1);
+        return;
       }
       // Add to dead file
       fs.appendFile("dead.txt", `${filePath}\n`, function (err) {
